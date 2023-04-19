@@ -16,6 +16,7 @@ const express_1 = __importDefault(require("express"));
 const mongodb_1 = require("mongodb");
 const axios_1 = __importDefault(require("axios"));
 const dotenv_1 = __importDefault(require("dotenv"));
+const cors_1 = __importDefault(require("cors"));
 dotenv_1.default.config();
 axios_1.default.defaults.baseURL = "https://api.thecatapi.com/v1";
 axios_1.default.defaults.headers.common["x-api-key"] = process.env.API_KEY;
@@ -35,6 +36,7 @@ const collectionName = "cat-breeds";
 const isObjectEmpty = (objectName) => {
     return Object.keys(objectName).length === 0;
 };
+app.use((0, cors_1.default)());
 app.get("/", (req, res) => {
     res.send("Express + TypeScript Server is running hot");
 });

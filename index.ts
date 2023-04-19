@@ -2,6 +2,7 @@ import express, { Express, Request, Response } from "express";
 import { MongoClient, ServerApiVersion } from "mongodb";
 import axios from "axios";
 import dotenv from "dotenv";
+import cors from "cors";
 
 dotenv.config();
 
@@ -36,6 +37,8 @@ const collectionName = "cat-breeds";
 const isObjectEmpty = (objectName: {}) => {
   return Object.keys(objectName).length === 0;
 };
+
+app.use(cors());
 
 app.get("/", (req: Request, res: Response) => {
   res.send("Express + TypeScript Server is running hot");
