@@ -44,7 +44,7 @@ app.get("/", (req: Request, res: Response) => {
   res.send("Express + TypeScript Server is running hot");
 });
 
-app.get("/search-breads/:beardName", async (req: Request, res: Response) => {
+app.get("/search-breeds/:beardName", async (req: Request, res: Response) => {
   try {
     const { data } = await axios<Breed[]>("/breeds");
     const breadName = req.params.beardName;
@@ -69,7 +69,7 @@ app.get("/search-breads/:beardName", async (req: Request, res: Response) => {
   }
 });
 
-app.get("/get-bread/:breedId", async (req: Request, res: Response) => {
+app.get("/get-breed/:breedId", async (req: Request, res: Response) => {
   try {
     const { data } = await axios<Breed>(`/breeds/${req.params.breedId}`);
     if (isObjectEmpty(data)) {
