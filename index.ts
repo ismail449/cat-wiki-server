@@ -33,10 +33,7 @@ type BreedCount = {
 
 const dbName = "cat_wiki";
 const collectionName = "cat-breeds";
-
-const isObjectEmpty = (objectName: {}) => {
-  return Object.keys(objectName).length === 0;
-};
+const imagesLimit = 10;
 
 app.use(cors());
 
@@ -44,21 +41,21 @@ app.get("/", (req: Request, res: Response) => {
   res.send("Express + TypeScript Server is running hot");
 });
 
-app.get("/search-breeds/:beardName", async (req: Request, res: Response) => {
+app.get("/search-breeds/:breedName", async (req: Request, res: Response) => {
   try {
     const { data } = await axios<Breed[]>("/breeds");
-    const breadName = req.params.beardName;
+    const breedName = req.params.breedName;
 
-    const filteredBreads = data.filter((breed) => {
+    const filteredBreeds = data.filter((breed) => {
       return breed.name
         .toLocaleLowerCase()
-        .includes(breadName.toLocaleLowerCase());
+        .includes(breedName.toLocaleLowerCase());
     });
-    if (filteredBreads.length === 0) {
+    if (filteredBreeds.length === 0) {
       res.status(404).send("Breed NOT Found");
       return;
     }
-    const newFilteredBreeds = filteredBreads.map((breed) => {
+    const newFilteredBreeds = filteredBreeds.map((breed) => {
       return { name: breed.name, id: breed.id };
     });
     res.send(newFilteredBreeds);
@@ -71,27 +68,44 @@ app.get("/search-breeds/:beardName", async (req: Request, res: Response) => {
 
 app.get("/get-breed/:breedId", async (req: Request, res: Response) => {
   try {
-    const { data } = await axios<Breed>(`/breeds/${req.params.breedId}`);
-    if (isObjectEmpty(data)) {
+    const breedId = req.params.breedId;
+    const { data } = await axios(
+      `/images/search?breed_ids=${breedId}&limit=${imagesLimit}`
+    );
+    if (data.length === 0) {
       res.status(404).send("Breed NOT Found");
       return;
     }
     await client.connect();
     const db = await client.db(dbName);
     const breedCollection = await db.collection(collectionName);
-    const breedCount = await breedCollection.findOne<BreedCount>({
-      id: data.id,
+    const breed = await breedCollection.findOne<BreedCount>({
+      id: breedId,
     });
-    if (!breedCount) {
-      await breedCollection.insertOne({ ...data, searchCount: 1 });
+    let resultBreed = {};
+    const breedData = data[0].breeds[0];
+    const breedImages = data.map((breed: { breeds?: [] }) => {
+      delete breed.breeds;
+      return breed;
+    });
+    if (!breed) {
+      resultBreed = await breedCollection.insertOne({
+        id: breedData.id,
+        breedData,
+        searchCount: 1,
+        images: breedImages,
+      });
     } else {
-      await breedCollection.updateOne(
-        { id: data.id },
-        { $set: { searchCount: breedCount.searchCount + 1 } }
+      resultBreed = await breedCollection.updateOne(
+        { id: breedId },
+        { $set: { searchCount: breed.searchCount + 1 } }
       );
     }
     await client.close();
-    res.send(data);
+    res.send({
+      breedData,
+      images: breedImages,
+    });
   } catch (error) {
     if (error instanceof Error) {
       res.status(404).send(error.message);
@@ -120,5 +134,5 @@ app.get("/get-top-ten-searched-breeds", async (req: Request, res: Response) => {
 });
 
 app.listen(port, () => {
-  console.log(`⚡️[server]: Server is running at http://localhost:${port}`);
+  console.log(`⚡️[server]: Server is running at Port:${port}`);
 });

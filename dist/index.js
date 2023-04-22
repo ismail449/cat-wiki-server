@@ -33,27 +33,25 @@ const app = (0, express_1.default)();
 const port = process.env.PORT || 5000;
 const dbName = "cat_wiki";
 const collectionName = "cat-breeds";
-const isObjectEmpty = (objectName) => {
-    return Object.keys(objectName).length === 0;
-};
+const imagesLimit = 10;
 app.use((0, cors_1.default)());
 app.get("/", (req, res) => {
     res.send("Express + TypeScript Server is running hot");
 });
-app.get("/search-breads/:beardName", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.get("/search-breeds/:breedName", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { data } = yield (0, axios_1.default)("/breeds");
-        const breadName = req.params.beardName;
-        const filteredBreads = data.filter((breed) => {
+        const breedName = req.params.breedName;
+        const filteredBreeds = data.filter((breed) => {
             return breed.name
                 .toLocaleLowerCase()
-                .includes(breadName.toLocaleLowerCase());
+                .includes(breedName.toLocaleLowerCase());
         });
-        if (filteredBreads.length === 0) {
+        if (filteredBreeds.length === 0) {
             res.status(404).send("Breed NOT Found");
             return;
         }
-        const newFilteredBreeds = filteredBreads.map((breed) => {
+        const newFilteredBreeds = filteredBreeds.map((breed) => {
             return { name: breed.name, id: breed.id };
         });
         res.send(newFilteredBreeds);
@@ -64,27 +62,42 @@ app.get("/search-breads/:beardName", (req, res) => __awaiter(void 0, void 0, voi
         }
     }
 }));
-app.get("/get-bread/:breedId", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.get("/get-breed/:breedId", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { data } = yield (0, axios_1.default)(`/breeds/${req.params.breedId}`);
-        if (isObjectEmpty(data)) {
+        const breedId = req.params.breedId;
+        const { data } = yield (0, axios_1.default)(`/images/search?breed_ids=${breedId}&limit=${imagesLimit}`);
+        if (data.length === 0) {
             res.status(404).send("Breed NOT Found");
             return;
         }
         yield client.connect();
         const db = yield client.db(dbName);
         const breedCollection = yield db.collection(collectionName);
-        const breedCount = yield breedCollection.findOne({
-            id: data.id,
+        const breed = yield breedCollection.findOne({
+            id: breedId,
         });
-        if (!breedCount) {
-            yield breedCollection.insertOne(Object.assign(Object.assign({}, data), { searchCount: 1 }));
+        let resultBreed = {};
+        const breedData = data[0].breeds[0];
+        const breedImages = data.map((breed) => {
+            delete breed.breeds;
+            return breed;
+        });
+        if (!breed) {
+            resultBreed = yield breedCollection.insertOne({
+                id: breedData.id,
+                breedData,
+                searchCount: 1,
+                images: breedImages,
+            });
         }
         else {
-            yield breedCollection.updateOne({ id: data.id }, { $set: { searchCount: breedCount.searchCount + 1 } });
+            resultBreed = yield breedCollection.updateOne({ id: breedId }, { $set: { searchCount: breed.searchCount + 1 } });
         }
         yield client.close();
-        res.send(data);
+        res.send({
+            breedData,
+            images: breedImages,
+        });
     }
     catch (error) {
         if (error instanceof Error) {
@@ -112,5 +125,5 @@ app.get("/get-top-ten-searched-breeds", (req, res) => __awaiter(void 0, void 0, 
     }
 }));
 app.listen(port, () => {
-    console.log(`⚡️[server]: Server is running at http://localhost:${port}`);
+    console.log(`⚡️[server]: Server is running at Port:${port}`);
 });
